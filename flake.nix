@@ -42,12 +42,20 @@
 
           echo "Exporting environment variables..."
           while IFS='=' read -r -d "" name value; do
-              printf "export %s=%q\n" "$name" "$value"
+              # Don't export PATH directly to avoid clobbering nix shell paths
+              if [[ "$name" != "PATH" ]]; then
+                  printf "export %s=%q\n" "$name" "$value"
+              fi
           done < <(env -0) > /etc/rp_environment
           
           if ! grep -q 'source /etc/rp_environment' ~/.bashrc 2>/dev/null; then
               echo 'source /etc/rp_environment' >> ~/.bashrc
           fi
+
+          echo "Setting up persistent Nix profile..."
+          mkdir -p /workspace/nix-profiles
+          rm -f /nix/var/nix/profiles/per-user/root
+          ln -s /workspace/nix-profiles /nix/var/nix/profiles/per-user/root
 
           echo "Start script(s) finished, Pod is ready to use."
           
@@ -81,6 +89,7 @@
             "RP_WORKSPACE=/workspace"
             "NIX_PAGER=cat"
             "SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
+            "NIX_SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
           ];
           ExposedPorts = { "22/tcp" = {}; };
           WorkingDir = "/workspace";
@@ -89,7 +98,11 @@
         extraCommands = ''
           mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin
           chmod 755 var/empty var/run/sshd
+
+          # Configure Nix to run properly in a single-user Docker environment
           echo "experimental-features = nix-command flakes" > etc/nix/nix.conf
+          echo "build-users-group =" >> etc/nix/nix.conf
+
           echo "hosts: files dns" > etc/nsswitch.conf
           
           echo "root:x:0:0:root:/root:/bin/bash" > etc/passwd
