@@ -47,10 +47,27 @@
                   printf "export %s=%q\n" "$name" "$value"
               fi
           done < <(env -0) > /etc/rp_environment
-          
-          if ! grep -q 'source /etc/rp_environment' ~/.bashrc 2>/dev/null; then
-              echo 'source /etc/rp_environment' >> ~/.bashrc
+
+          # Create system-wide profile
+          cat << 'EOF' > /etc/profile
+          # Load RunPod environment variables
+          if [ -f /etc/rp_environment ]; then
+              . /etc/rp_environment
           fi
+
+          # Ensure the persistent Nix profile is on the PATH
+          export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+
+          # Globally allow unfree packages (like CUDA)
+          export NIXPKGS_ALLOW_UNFREE=1
+
+          # Expose RunPod NVIDIA drivers to Nix packages
+          export LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"
+          EOF
+
+          # Ensure all bash shells (login and non-login) load the profile
+          echo ". /etc/profile" > /root/.bashrc
+          echo ". /etc/profile" > /root/.profile
 
           echo "Setting up persistent Nix profile..."
           mkdir -p /workspace/nix-profiles
@@ -110,6 +127,10 @@
           # Configure Nix to run properly in a single-user Docker environment
           echo "experimental-features = nix-command flakes" > etc/nix/nix.conf
           echo "build-users-group =" >> etc/nix/nix.conf
+          
+          # Add CUDA Cachix globally
+          echo "extra-substituters = https://cuda-maintainers.cachix.org" >> etc/nix/nix.conf
+          echo "extra-trusted-public-keys = cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUPwNQQq2x2PuC1tGi7C8Y=" >> etc/nix/nix.conf
 
           echo "hosts: files dns" > etc/nsswitch.conf
           
