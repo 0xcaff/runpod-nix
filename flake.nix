@@ -1,0 +1,122 @@
+{
+  description = "a minimal, runpod base image built with nix";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+  };
+
+  outputs = { self, nixpkgs }:
+    let
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+
+      pkgs-linux = import nixpkgs { system = "x86_64-linux"; };
+
+      sshd_config = pkgs-linux.writeText "sshd_config" ''
+        Port 22
+        PermitRootLogin yes
+        PubkeyAuthentication yes
+        AuthorizedKeysFile .ssh/authorized_keys
+        PasswordAuthentication no
+        ChallengeResponseAuthentication no
+        UsePAM no
+        Subsystem sftp internal-sftp
+        HostKey /etc/ssh/ssh_host_rsa_key
+        HostKey /etc/ssh/ssh_host_ed25519_key
+      '';
+
+      startScript = pkgs-linux.writeShellApplication {
+        name = "start.sh";
+        runtimeInputs = with pkgs-linux; [ coreutils gnugrep gawk bash procps ];
+        text = ''
+          echo "Pod Started"
+
+          if [[ -n "''${PUBLIC_KEY:-}" ]]; then
+              echo "Setting up SSH..."
+              mkdir -p ~/.ssh
+              echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
+              chmod 700 -R ~/.ssh
+              ${pkgs-linux.openssh}/bin/ssh-keygen -A >/dev/null 2>&1 || true
+              ${pkgs-linux.openssh}/bin/sshd -e -f ${sshd_config}
+          fi
+
+          echo "Exporting environment variables..."
+          while IFS='=' read -r -d "" name value; do
+              printf "export %s=%q\n" "$name" "$value"
+          done < <(env -0) > /etc/rp_environment
+          
+          if ! grep -q 'source /etc/rp_environment' ~/.bashrc 2>/dev/null; then
+              echo 'source /etc/rp_environment' >> ~/.bashrc
+          fi
+
+          echo "Start script(s) finished, Pod is ready to use."
+          
+          exec sleep infinity
+        '';
+      };
+
+      image = pkgs-linux.dockerTools.buildLayeredImage {
+        name = "ghcr.io/0xcaff/runpod-nix";
+        tag = "latest";
+        
+        contents = with pkgs-linux; [
+          bashInteractive
+          coreutils
+          openssh
+          gnugrep
+          gawk
+          procps
+          curl
+          jq
+          nix
+          cacert
+        ];
+
+        config = {
+          Cmd = [ "${startScript}/bin/start.sh" ]; 
+          Env = [
+            "USER=root"
+            "HOME=/root"
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            "RP_WORKSPACE=/workspace"
+            "NIX_PAGER=cat"
+            "SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
+          ];
+          ExposedPorts = { "22/tcp" = {}; };
+          WorkingDir = "/workspace";
+        };
+
+        extraCommands = ''
+          mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin
+          chmod 755 var/empty var/run/sshd
+          echo "experimental-features = nix-command flakes" > etc/nix/nix.conf
+          echo "hosts: files dns" > etc/nsswitch.conf
+          
+          echo "root:x:0:0:root:/root:/bin/bash" > etc/passwd
+          echo "sshd:x:100:65534:Privilege-separated SSH:/var/empty:/sbin/nologin" >> etc/passwd
+          echo "root:x:0:" > etc/group
+          echo "sshd:x:100:" >> etc/group
+        '';
+      };
+
+    in {
+      packages = forAllSystems (system: {
+        default = image;
+      });
+
+      apps = forAllSystems (system: 
+        let 
+          pkgs = import nixpkgs { inherit system; };
+        in {
+          deploy = {
+            type = "app";
+            program = "${pkgs.writeShellScript "deploy" ''
+              set -e
+              echo "Pushing image to ghcr.io/0xcaff/runpod-nix:latest..."
+              ${pkgs.skopeo}/bin/skopeo copy docker-archive:${image} docker://ghcr.io/0xcaff/runpod-nix:latest
+            ''}";
+          };
+        }
+      );
+    };
+}
