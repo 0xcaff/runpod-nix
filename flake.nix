@@ -54,8 +54,15 @@
 
           echo "Setting up persistent Nix profile..."
           mkdir -p /workspace/nix-profiles
+          mkdir -p /nix/var/nix/profiles/per-user
           rm -f /nix/var/nix/profiles/per-user/root
           ln -s /workspace/nix-profiles /nix/var/nix/profiles/per-user/root
+
+          # Configure max-jobs dynamically based on RunPod CPU limits
+          if [[ -n "''${RUNPOD_CPU_COUNT:-}" ]]; then
+              echo "max-jobs = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
+              echo "cores = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
+          fi
 
           echo "Start script(s) finished, Pod is ready to use."
           
@@ -96,8 +103,9 @@
         };
 
         extraCommands = ''
-          mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin
+          mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin tmp
           chmod 755 var/empty var/run/sshd
+          chmod 1777 tmp
 
           # Configure Nix to run properly in a single-user Docker environment
           echo "experimental-features = nix-command flakes" > etc/nix/nix.conf
