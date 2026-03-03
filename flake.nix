@@ -17,7 +17,7 @@
         sandbox = false
         build-users-group =
         substituters = https://cache.nixos.org https://cache.nixos-cuda.org
-        trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.nixos-cuda.org-1:6Q02x/Tto2v7yB48z88X19B3h3wI16Gf6YtXkE0kRUU=
+        trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
       '';
 
       registryFile = pkgs-linux.writeTextDir "etc/nix/registry.json" (builtins.toJSON {
