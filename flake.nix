@@ -130,6 +130,7 @@
         ];
 
         config = {
+          Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "--" ];
           Cmd = [ "${startScript}/bin/start.sh" ]; 
           Env = [
             "USER=root"
