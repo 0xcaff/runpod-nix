@@ -12,6 +12,24 @@
 
       pkgs-linux = import nixpkgs { system = "x86_64-linux"; };
 
+      nixConf = pkgs-linux.writeTextDir "etc/nix/nix.conf" ''
+        experimental-features = nix-command flakes
+        sandbox = false
+        build-users-group =
+        substituters = https://cache.nixos.org https://cache.nixos-cuda.org
+        trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.nixos-cuda.org-1:6Q02x/Tto2v7yB48z88X19B3h3wI16Gf6YtXkE0kRUU=
+      '';
+
+      registryFile = pkgs-linux.writeTextDir "etc/nix/registry.json" (builtins.toJSON {
+        version = 2;
+        flakes = [
+          {
+            from = { id = "nixpkgs"; type = "indirect"; };
+            to = { type = "path"; path = nixpkgs.outPath; };
+          }
+        ];
+      });
+
       sshd_config = pkgs-linux.writeText "sshd_config" ''
         Port 22
         PermitRootLogin yes
@@ -102,6 +120,8 @@
           jq
           nix
           cacert
+          nixConf
+          registryFile
         ];
 
         config = {
@@ -123,14 +143,6 @@
           mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin tmp
           chmod 755 var/empty var/run/sshd
           chmod 1777 tmp
-
-          # Configure Nix to run properly in a single-user Docker environment
-          echo "experimental-features = nix-command flakes" > etc/nix/nix.conf
-          echo "build-users-group =" >> etc/nix/nix.conf
-          
-          # Add CUDA Cachix globally
-          echo "extra-substituters = https://cuda-maintainers.cachix.org" >> etc/nix/nix.conf
-          echo "extra-trusted-public-keys = cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUPwNQQq2x2PuC1tGi7C8Y=" >> etc/nix/nix.conf
 
           echo "hosts: files dns" > etc/nsswitch.conf
           
@@ -155,7 +167,7 @@
             program = "${pkgs.writeShellScript "deploy" ''
               set -e
               echo "Pushing image to ghcr.io/0xcaff/runpod-nix:latest..."
-              ${pkgs.skopeo}/bin/skopeo copy docker-archive:${image} docker://ghcr.io/0xcaff/runpod-nix:latest
+              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${image} docker://ghcr.io/0xcaff/runpod-nix:latest
             ''}";
           };
         }
