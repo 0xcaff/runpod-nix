@@ -30,6 +30,22 @@
         ];
       });
 
+      profileFile = pkgs-linux.writeTextDir "etc/profile" ''
+        # Load RunPod environment variables
+        if [ -f /etc/rp_environment ]; then
+            . /etc/rp_environment
+        fi
+
+        # Ensure the persistent Nix profile is on the PATH
+        export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+
+        # Globally allow unfree packages (like CUDA)
+        export NIXPKGS_ALLOW_UNFREE=1
+
+        # Expose RunPod NVIDIA drivers to Nix packages
+        export LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"
+      '';
+
       sshd_config = pkgs-linux.writeText "sshd_config" ''
         Port 22
         PermitRootLogin yes
@@ -66,23 +82,6 @@
               fi
           done < <(env -0) > /etc/rp_environment
 
-          # Create system-wide profile
-          cat << 'EOF' > /etc/profile
-          # Load RunPod environment variables
-          if [ -f /etc/rp_environment ]; then
-              . /etc/rp_environment
-          fi
-
-          # Ensure the persistent Nix profile is on the PATH
-          export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
-
-          # Globally allow unfree packages (like CUDA)
-          export NIXPKGS_ALLOW_UNFREE=1
-
-          # Expose RunPod NVIDIA drivers to Nix packages
-          export LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"
-          EOF
-
           # Ensure all bash shells (login and non-login) load the profile
           echo ". /etc/profile" > /root/.bashrc
           echo ". /etc/profile" > /root/.profile
@@ -98,6 +97,11 @@
               echo "max-jobs = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
               echo "cores = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
           fi
+
+          # Mirror Host Drivers into /run/opengl-driver/lib
+          for f in /usr/lib64/*; do
+              ln -sf "$f" "/run/opengl-driver/lib/$(basename "$f")"
+          done
 
           echo "Start script(s) finished, Pod is ready to use."
           
