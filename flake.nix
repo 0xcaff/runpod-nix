@@ -126,6 +126,7 @@
           nix
           cacert
           registryFile
+          profileFile
         ];
 
         config = {
