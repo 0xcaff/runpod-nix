@@ -120,7 +120,6 @@
           jq
           nix
           cacert
-          nixConf
           registryFile
         ];
 
@@ -143,6 +142,9 @@
           mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin tmp
           chmod 755 var/empty var/run/sshd
           chmod 1777 tmp
+
+          # Create a writable nix.conf based on the Nix-managed one
+          cat ${nixConf}/etc/nix/nix.conf > etc/nix/nix.conf
 
           echo "hosts: files dns" > etc/nsswitch.conf
           
