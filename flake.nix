@@ -125,6 +125,8 @@
           jq
           nix
           cacert
+          git
+        ] ++ [
           registryFile
           profileFile
         ];
