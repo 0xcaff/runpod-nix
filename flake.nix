@@ -125,14 +125,15 @@
           jq
           nix
           cacert
-          git
+          glibcLocales
+          tini
         ] ++ [
           registryFile
           profileFile
         ];
 
         config = {
-          Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "--" ];
+          Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "-s" "--" ];
           Cmd = [ "${startScript}/bin/start.sh" ]; 
           Env = [
             "USER=root"
@@ -140,6 +141,9 @@
             "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             "RP_WORKSPACE=/workspace"
             "NIX_PAGER=cat"
+            "LANG=en_US.UTF-8"
+            "LC_ALL=en_US.UTF-8"
+            "LOCALE_ARCHIVE=${pkgs-linux.glibcLocales}/lib/locale/locale-archive"
             "SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
             "NIX_SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
           ];
