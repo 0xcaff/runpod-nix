@@ -100,7 +100,7 @@
 
           # Mirror Host Drivers into /run/opengl-driver/lib
           mkdir -p /run/opengl-driver/lib
-          for f in /usr/lib64/*; do
+          for f in /usr/lib/x86_64-linux-gnu/*; do
               ln -sf "$f" "/run/opengl-driver/lib/$(basename "$f")"
           done
 
