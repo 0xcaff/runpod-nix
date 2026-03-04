@@ -141,7 +141,7 @@
           Env = [
             "USER=root"
             "HOME=/root"
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            "PATH=/usr/bin:/sbin:/bin"
             "RP_WORKSPACE=/workspace"
             "NIX_PAGER=cat"
             "LANG=en_US.UTF-8"
