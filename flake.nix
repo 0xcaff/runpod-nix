@@ -133,6 +133,9 @@
         ];
 
         config = {
+          # Use tini as an init process to prevent zombie processes.
+          # -s: Register as a subreaper (RunPod's docker-init steals PID 1).
+          # -g: Forward signals to the entire process group (kills background workers).
           Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "-s" "-g" "--" ];
           Cmd = [ "${startScript}/bin/start.sh" ]; 
           Env = [
