@@ -126,7 +126,7 @@
           nix
           cacert
           glibcLocales
-          tini
+          git
         ] ++ [
           registryFile
           profileFile
