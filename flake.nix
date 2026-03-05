@@ -110,11 +110,9 @@
         '';
       };
 
-      image = pkgs-linux.dockerTools.buildLayeredImage {
-        name = "ghcr.io/0xcaff/runpod-nix";
-        tag = "latest";
-        
-        contents = with pkgs-linux; [
+      baseEnv = pkgs-linux.buildEnv {
+        name = "runpod-base-env";
+        paths = with pkgs-linux; [
           bashInteractive
           coreutils
           openssh
@@ -127,10 +125,19 @@
           cacert
           glibcLocales
           git
+          tini
         ] ++ [
+          startScript
           registryFile
           profileFile
         ];
+      };
+
+      image = pkgs-linux.dockerTools.buildLayeredImage {
+        name = "ghcr.io/0xcaff/runpod-nix";
+        tag = "latest";
+        
+        contents = baseEnv;
 
         config = {
           # Use tini as an init process to prevent zombie processes.
@@ -158,6 +165,10 @@
           mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin tmp
           chmod 755 var/empty var/run/sshd
           chmod 1777 tmp
+
+          # Protect base image contents from Nix Garbage Collection
+          mkdir -p nix/var/nix/gcroots
+          ln -s ${baseEnv} nix/var/nix/gcroots/base-env
 
           # Create a writable nix.conf based on the Nix-managed one
           cat ${nixConf}/etc/nix/nix.conf > etc/nix/nix.conf
