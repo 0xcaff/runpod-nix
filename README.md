@@ -25,8 +25,15 @@ tools for building images for [runpod] with nix
     ```
 - add volume storage if you want `/workspace` and nix profile to persist across reboots
 
-includes `nix`, `git`, basic shell tooling, `nvidia-smi` and friends, and gotty support
-for the runpod web terminal.
+the development image (`ghcr.io/0xcaff/runpod-nix:latest`) includes:
+
+- full `nix` cli with `flakes` and `nix-command` enabled
+- pinned `nixpkgs` registry and preconfigured binary caches (including CUDA cache)
+- `git` plus basic shell tooling (`curl`, `jq`, `grep`, `awk`, `procps`)
+- runpod web terminal support via `gotty`
+- dedicated ssh support on `22/tcp` when `PUBLIC_KEY` is provided
+- gpu runtime helpers including `nvidia-smi` compatibility and required host library wiring
+- persistent nix profile behavior when a volume is attached (`/workspace` + `/workspace/nix-profiles`)
 
 ```bash
 nix profile add nixpkgs#python311 nixpkgs#tmux nixpkgs#uv
@@ -63,7 +70,12 @@ once you're ready to build a custom image, create a flake.nix
         name = "ghcr.io/example/my-app";
         tag = "latest";
         modules = [
-          modules.base # use modules.interactive for additional tools
+          # minimal runtime (~71 MB compressed / ~282 MB uncompressed)
+          modules.base
+          # interactive (~300 MB compressed / ~1 GB uncompressed)
+          # includes development tools. this is what the template and
+          # prebuilt images use. chose one or the other.
+          # modules.interactive
           ({ ... }: {
             config.runpod = {
               contents = [ app pkgs.python311 ];
