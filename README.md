@@ -1,38 +1,29 @@
 # runpod-nix
 
+<p>
+  <a href="https://console.runpod.io/deploy?template=d5w42uggft&ref=zchz96mv">
+    <img alt="Runpod NVIDIA template" src="https://img.shields.io/badge/Runpod%20NVIDIA-Deploy-76B900?logo=nvidia&logoColor=white">
+  </a>
+  <a href="https://console.runpod.io/deploy?template=cuyqr7ggld&ref=zchz96mv">
+    <img alt="Runpod CPU template" src="https://img.shields.io/badge/Runpod%20CPU-Deploy-0F62FE?logo=linux&logoColor=white">
+  </a>
+</p>
+
 tools for building images for [runpod] with nix
-
-## motivation
-
-nix is a tool for defining the entire software environment for a workload in
-one place. from the application to the runtime level dependencies (python
-packages or node packages) to native libraries to helper binaries (like ffmpeg
-or protoc). where tools like docker trade off composibility for isolation and tools like uv miss parts of the build graph, nix encodes the whole thing.
-
-runpod has built a great platform for renting GPUs. its cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
-
-these are tools for packaging your nix applications into runpod images.
 
 ## usage
 
 ### development
 
-to launch a development image it on runpod (with ssh access, nix etc):
+- launch from one of the templates
+  - [Runpod Launch Instance - Nix - Nvidia GPU](https://console.runpod.io/deploy?template=d5w42uggft&ref=zchz96mv)
+  - [Runpod Launch Instance - Nix - CPU](https://console.runpod.io/deploy?template=cuyqr7ggld&ref=zchz96mv)
+  - or from the container directly
+    > ghcr.io/0xcaff/runpod-nix:latest
+- add volume storage if you want `/workspace` and nix profile to persist across reboots
 
-- create a pod or pod template with image `ghcr.io/0xcaff/runpod-nix:interactive`
-- expose TCP port `22` if you want direct SSH access
-- add a volume if you want the `/workspace` folder and `nix profile add` installs to persist across reboots
-- once the pod is running, open the web terminal from the connect menu or use
-  the SSH command shown there
-
-see runpod docs for [SSH access](https://docs.runpod.io/pods/configuration/use-ssh),
-[connection options](https://docs.runpod.io/pods/connect-to-a-pod), and
-[pod environment variables](https://docs.runpod.io/pods/templates/environment-variables).
-
-it includes `nix`, `git`, basic shell tooling, ssh support, `nvidia-smi` and friends, and gotty support
+includes `nix`, `git`, basic shell tooling, `nvidia-smi` and friends, and gotty support
 for the runpod web terminal.
-
-typical workflow:
 
 ```bash
 nix profile add nixpkgs#python311 nixpkgs#tmux nixpkgs#uv
@@ -41,7 +32,9 @@ cd your-repo
 nix develop
 ```
 
-### depolyment
+### deployment
+
+once you've got your application working and are ready to go deploy for production here's how you can do it.
 
 ```nix
 {
@@ -83,7 +76,7 @@ nix develop
 }
 ```
 
-build it with:
+build with
 
 ```bash
 nix build .#packages.x86_64-linux.app
@@ -105,5 +98,16 @@ to launch it on runpod:
 
 see runpod docs for [custom templates](https://docs.runpod.io/pods/templates/create-custom-template)
 and [exposing ports](https://docs.runpod.io/pods/configuration/expose-ports).
+
+## motivation
+
+nix is a tool for defining the entire software environment for a workload in
+one place. from the application to the runtime level dependencies (python
+packages or node packages) to native libraries to helper binaries (like ffmpeg
+or protoc). where tools like docker trade off composibility for isolation and tools like uv miss parts of the build graph, nix encodes the whole thing.
+
+runpod has built a great platform for renting GPUs. its cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
+
+these are tools for packaging your nix applications into runpod images.
 
 [runpod]: https://runpod.io/
