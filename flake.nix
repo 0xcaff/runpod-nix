@@ -197,7 +197,6 @@
             "USER=root"
             "HOME=/root"
             "PATH=/run/patched-bin:/usr/bin:/sbin:/bin"
-            "RP_WORKSPACE=/workspace"
             "NIX_PAGER=cat"
             "LANG=en_US.UTF-8"
             "LC_ALL=en_US.UTF-8"
