@@ -205,7 +205,6 @@
             "NIX_SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
           ];
           ExposedPorts = { "22/tcp" = {}; };
-          WorkingDir = "/workspace";
         };
 
         extraCommands = ''
