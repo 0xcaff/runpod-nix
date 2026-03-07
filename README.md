@@ -35,6 +35,8 @@ the development image (`ghcr.io/0xcaff/runpod-nix:latest`) includes:
 - gpu runtime helpers including `nvidia-smi` compatibility and required host library wiring
 - persistent nix profile behavior when a volume is attached (`/workspace` + `/workspace/nix-profiles`)
 
+typical worfklow:
+
 ```bash
 nix profile add nixpkgs#python311 nixpkgs#tmux nixpkgs#uv
 git clone https://github.com/your-org/your-repo
