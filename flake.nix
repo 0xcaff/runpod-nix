@@ -10,7 +10,7 @@
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
-      pkgs-linux = import nixpkgs { system = "x86_64-linux"; };
+      pkgs = import nixpkgs { system = "x86_64-linux"; };
 
       modulePaths = {
         base = ./modules/base/default.nix;
@@ -28,9 +28,7 @@
       };
 
       mkImage = import ./lib/mk-image.nix {
-        pkgs = pkgs-linux;
-        lib = pkgs-linux.lib;
-        inherit nixpkgs;
+        inherit pkgs;
       };
 
       fullImage = mkImage {

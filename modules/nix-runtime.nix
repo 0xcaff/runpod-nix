@@ -1,4 +1,4 @@
-{ lib, pkgs, nixpkgs, runpodImageEnv, ... }:
+{ lib, pkgs, runpodImageEnv, ... }:
 let
   nixProfileEnv = pkgs.writeTextDir "etc/profile.d/nix-runtime.sh" ''
     export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
@@ -42,7 +42,7 @@ let
     flakes = [
       {
         from = { id = "nixpkgs"; type = "indirect"; };
-        to = { type = "path"; path = nixpkgs.outPath; };
+        to = { type = "path"; path = pkgs.path; };
       }
     ];
   });

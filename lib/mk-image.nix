@@ -1,11 +1,13 @@
-{ pkgs, lib, nixpkgs }:
+{ pkgs }:
 { name
 , tag ? "latest"
 , modules ? []
 }:
 let
+  lib = pkgs.lib;
+
   eval = lib.evalModules {
-    specialArgs = { inherit pkgs lib nixpkgs runpodImageEnv; };
+    specialArgs = { inherit pkgs lib runpodImageEnv; };
     modules = modules;
   };
 
