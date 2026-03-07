@@ -30,9 +30,7 @@ jobs:
         with:
           images: ghcr.io/0xcaff/runpod-nix
           tags: |
-            type=raw,value=interactive
-            type=sha,format=short,prefix=sha-
-            type=edge,branch=main
+            type=raw,value=latest
 
       - name: Build interactive image
         id: build
