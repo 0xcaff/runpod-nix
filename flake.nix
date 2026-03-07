@@ -74,6 +74,9 @@
               ${pkgs-linux.openssh}/bin/sshd -e -f ${sshd_config}
           fi
 
+          # Remove gotty as it is in the nix store now instead
+          rm /usr/bin/gotty
+
           echo "Exporting environment variables..."
           while IFS='=' read -r -d "" name value; do
               # Don't export PATH directly to avoid clobbering nix shell paths
@@ -126,6 +129,10 @@
           glibcLocales
           git
           tini
+
+          # Needed to enable the web terminal switch
+          gotty
+          sed
         ] ++ [
           startScript
           registryFile
