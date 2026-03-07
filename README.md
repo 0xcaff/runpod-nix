@@ -16,16 +16,17 @@ A minimal, high-performance RunPod base image built entirely with Nix Flakes. Th
 ## Module Layout
 
 - `modules/base/options.nix`: Module schema (`runpod.contents`, `runpod.env`, `runpod.startHooks`, `runpod.extraCommands`, etc.)
-- `modules/base/default.nix`: Base composition module (imports `base/options`, `base/env`, `base/host-libs`, and `base/patched-bin`)
+- `modules/base/default.nix`: Base composition module (imports `base/options`, `base/host-libs`, and `base/patched-bin`)
 - `modules/base/patched-bin.nix`: Patched-bin setup and ELF patching hook for `/usr/bin`
-- `modules/base/env.nix`: RunPod env export and `/etc/profile` integration
+- `modules/ssh/default.nix`: SSH feature composition module (imports `ssh/env` and `ssh/ssh`)
+- `modules/ssh/env.nix`: RunPod env export and `/etc/profile` integration
 - `modules/base/host-libs.nix`: Host driver library mirror hook
-- `modules/ssh.nix`: SSH setup and `PUBLIC_KEY` handling
+- `modules/ssh/ssh.nix`: SSH setup and `PUBLIC_KEY` handling
 - `modules/nix-runtime.nix`: Nix config, registry, GC root, and persistent profiles
 - `modules/gotty.nix`: Gotty compatibility hook
-- `modules/tools.nix`: Extra CLI tooling (`gnugrep`, `gawk`, `procps`, `curl`, `jq`) used only in full images
+- `modules/tools.nix`: Extra CLI tooling (`gnugrep`, `gawk`, `procps`, `curl`, `jq`) used only in interactive images
 - `lib/mk-image.nix`: Builder function that evaluates modules and emits the OCI image derivation
-- `flake.nix`: Defines inline module compositions for `full` and `minimal` images
+- `flake.nix`: Defines inline module compositions for `interactive` and `base` images
 
 ## Usage
 
@@ -53,9 +54,9 @@ To build the image locally:
 nix build .#
 ```
 
-To build the minimal profile:
+To build the base profile:
 ```bash
-nix build .#minimal
+nix build .#base
 ```
 
 To push the image to a registry (requires `skopeo`):

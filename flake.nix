@@ -18,10 +18,11 @@
         base-patched-bin = ./modules/base/patched-bin.nix;
         options = ./modules/base/options.nix;
         base-options = ./modules/base/options.nix;
-        ssh = ./modules/ssh.nix;
+        ssh = ./modules/ssh/default.nix;
+        ssh-module = ./modules/ssh/ssh.nix;
+        ssh-env = ./modules/ssh/env.nix;
         nix-runtime = ./modules/nix-runtime.nix;
-        env = ./modules/base/env.nix;
-        base-env = ./modules/base/env.nix;
+        env = ./modules/ssh/env.nix;
         gotty = ./modules/gotty.nix;
         tools = ./modules/tools.nix;
         host-libs = ./modules/base/host-libs.nix;
@@ -33,21 +34,21 @@
           pkgs = import nixpkgs { inherit system; };
           mkImage = import ./lib/mk-image.nix { inherit pkgs; };
         in {
-          full = mkImage {
+          interactive = mkImage {
             name = "ghcr.io/0xcaff/runpod-nix";
-            tag = "latest";
+            tag = "interactive";
             modules = [
               ./modules/base/default.nix
               ./modules/tools.nix
-              ./modules/ssh.nix
+              ./modules/ssh/default.nix
               ./modules/nix-runtime.nix
               ./modules/gotty.nix
             ];
           };
 
-          minimal = mkImage {
+          base = mkImage {
             name = "ghcr.io/0xcaff/runpod-nix";
-            tag = "minimal";
+            tag = "base";
             modules = [ ./modules/base/default.nix ];
           };
         };
@@ -64,9 +65,9 @@
       inherit images;
 
       packages = forTargetSystems (system: {
-        default = images.${system}.full;
-        full = images.${system}.full;
-        minimal = images.${system}.minimal;
+        default = images.${system}.interactive;
+        interactive = images.${system}.interactive;
+        base = images.${system}.base;
       });
 
       apps = forDeploymentSystems (system:
@@ -77,8 +78,8 @@
             type = "app";
             program = "${pkgs.writeShellScript "deploy" ''
               set -e
-              echo "Pushing image to ghcr.io/0xcaff/runpod-nix:latest..."
-              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${defaultImages.full} docker://ghcr.io/0xcaff/runpod-nix:latest
+              echo "Pushing image to ghcr.io/0xcaff/runpod-nix:interactive..."
+              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${defaultImages.interactive} docker://ghcr.io/0xcaff/runpod-nix:interactive
             ''}";
           };
         }

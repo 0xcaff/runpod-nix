@@ -2,7 +2,6 @@
 {
   imports = [
     ./options.nix
-    ./env.nix
     ./host-libs.nix
     ./patched-bin.nix
   ];
