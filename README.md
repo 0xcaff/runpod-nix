@@ -37,7 +37,7 @@ nix develop
 
 ### deployment
 
-once you've got your application working and are ready to go deploy for production here's how you can do it.
+once you're ready to build a custom image, create a flake.nix
 
 ```nix
 {
