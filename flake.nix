@@ -76,6 +76,7 @@
 
           # Remove gotty as it is in the nix store now instead
           rm /usr/bin/gotty
+          rm -rf /etc/ld.so.conf.d/
 
           echo "Exporting environment variables..."
           while IFS='=' read -r -d "" name value; do
