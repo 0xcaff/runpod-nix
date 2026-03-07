@@ -12,13 +12,37 @@
 
       pkgs-linux = import nixpkgs { system = "x86_64-linux"; };
 
-      nixConf = pkgs-linux.writeTextDir "etc/nix/nix.conf" ''
-        experimental-features = nix-command flakes
-        sandbox = false
-        build-users-group =
-        substituters = https://cache.nixos.org https://cache.nixos-cuda.org
-        trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
-      '';
+      nixConf = {
+        experimental-features = [
+          "nix-command"
+          "flakes"
+        ];
+
+        sandbox = false;
+
+        build-users-group = "";
+
+        substituters = [
+          "https://cache.nixos.org"
+          "https://cache.nixos-cuda.org"
+        ];
+
+        trusted-public-keys = [
+          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+          "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
+        ];
+      };
+
+      nixConfEncoded = pkgs-linux.writeTextDir "etc/nix/nix.conf" (
+        lib.generators.toKeyValue {
+          mkKeyValue = lib.generators.mkKeyValueDefault {
+            mkValueString = v:
+              if builtins.isList v then lib.concatStringsSep " " v
+              else if builtins.isBool v then (if v then "true" else "false")
+              else builtins.toString v;
+          } "=";
+        } config.nix.settings
+      );
 
       registryFile = pkgs-linux.writeTextDir "etc/nix/registry.json" (builtins.toJSON {
         version = 2;
@@ -200,7 +224,7 @@
           cp ${registryFile}/etc/nix/registry.json etc/nix/registry.json
 
           # Create a writable nix.conf based on the Nix-managed one.
-          cat ${nixConf}/etc/nix/nix.conf > etc/nix/nix.conf
+          cat ${nixConfEncoded}/etc/nix/nix.conf > etc/nix/nix.conf
 
           echo "hosts: files dns" > etc/nsswitch.conf
           
