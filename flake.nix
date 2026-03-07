@@ -1,5 +1,5 @@
 {
-  description = "a minimal, runpod base image built with nix";
+  description = "composable runpod images built with nix modules";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -12,234 +12,57 @@
 
       pkgs-linux = import nixpkgs { system = "x86_64-linux"; };
 
-      nixConf = {
-        experimental-features = [
-          "nix-command"
-          "flakes"
-        ];
-
-        sandbox = false;
-
-        build-users-group = "";
-
-        substituters = [
-          "https://cache.nixos.org"
-          "https://cache.nixos-cuda.org"
-        ];
-
-        trusted-public-keys = [
-          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-          "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
-        ];
+      modulePaths = {
+        base = ./modules/base/default.nix;
+        base-patched-bin = ./modules/base/patched-bin.nix;
+        options = ./modules/base/options.nix;
+        base-options = ./modules/base/options.nix;
+        ssh = ./modules/ssh.nix;
+        nix-runtime = ./modules/nix-runtime.nix;
+        env = ./modules/base/env.nix;
+        base-env = ./modules/base/env.nix;
+        gotty = ./modules/gotty.nix;
+        tools = ./modules/tools.nix;
+        host-libs = ./modules/base/host-libs.nix;
+        base-host-libs = ./modules/base/host-libs.nix;
       };
 
-      nixConfEncoded = pkgs-linux.writeTextDir "etc/nix/nix.conf" (
-        lib.generators.toKeyValue {
-          mkKeyValue = lib.generators.mkKeyValueDefault {
-            mkValueString = v:
-              if builtins.isList v then lib.concatStringsSep " " v
-              else if builtins.isBool v then (if v then "true" else "false")
-              else builtins.toString v;
-          } "=";
-        } config.nix.settings
-      );
-
-      registryFile = pkgs-linux.writeTextDir "etc/nix/registry.json" (builtins.toJSON {
-        version = 2;
-        flakes = [
-          {
-            from = { id = "nixpkgs"; type = "indirect"; };
-            to = { type = "path"; path = nixpkgs.outPath; };
-          }
-        ];
-      });
-
-      profileFile = pkgs-linux.writeTextDir "etc/profile" ''
-        # Load RunPod environment variables
-        if [ -f /etc/rp_environment ]; then
-            . /etc/rp_environment
-        fi
-
-        # Ensure the persistent Nix profile is on the PATH
-        export PATH="/run/patched-bin:/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
-
-        # Globally allow unfree packages (like CUDA)
-        export NIXPKGS_ALLOW_UNFREE=1
-      '';
-
-      sshd_config = pkgs-linux.writeText "sshd_config" ''
-        Port 22
-        PermitRootLogin yes
-        PubkeyAuthentication yes
-        AuthorizedKeysFile .ssh/authorized_keys
-        PasswordAuthentication no
-        ChallengeResponseAuthentication no
-        UsePAM no
-        Subsystem sftp internal-sftp
-        HostKey /etc/ssh/ssh_host_rsa_key
-        HostKey /etc/ssh/ssh_host_ed25519_key
-      '';
-
-      startScript = pkgs-linux.writeShellApplication {
-        name = "start.sh";
-        runtimeInputs = with pkgs-linux; [ coreutils gnugrep gawk bash procps ];
-        text = ''
-          echo "Pod Started"
-
-          mkdir -p /run/patched-bin
-          export PATH="/run/patched-bin:$PATH"
-
-          if [[ -n "''${PUBLIC_KEY:-}" ]]; then
-              echo "Setting up SSH..."
-              mkdir -p ~/.ssh
-              echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
-              chmod 700 -R ~/.ssh
-              ${pkgs-linux.openssh}/bin/ssh-keygen -A >/dev/null 2>&1 || true
-              ${pkgs-linux.openssh}/bin/sshd -e -f ${sshd_config}
-          fi
-
-          # Remove gotty as it is in the nix store now instead
-          rm /usr/bin/gotty
-          rm -rf /etc/ld.so.conf.d/
-
-          echo "Exporting environment variables..."
-          while IFS='=' read -r -d "" name value; do
-              # Don't export PATH directly to avoid clobbering nix shell paths
-              if [[ "$name" != "PATH" ]]; then
-                  printf "export %s=%q\n" "$name" "$value"
-              fi
-          done < <(env -0) > /etc/rp_environment
-
-          # Ensure all bash shells (login and non-login) load the profile
-          echo ". /etc/profile" > /root/.bashrc
-          echo ". /etc/profile" > /root/.profile
-
-          echo "Setting up persistent Nix profile..."
-          mkdir -p /workspace/nix-profiles
-          mkdir -p /nix/var/nix/profiles/per-user
-          rm -f /nix/var/nix/profiles/per-user/root
-          ln -s /workspace/nix-profiles /nix/var/nix/profiles/per-user/root
-
-          # Configure max-jobs dynamically based on RunPod CPU limits
-          if [[ -n "''${RUNPOD_CPU_COUNT:-}" ]]; then
-              echo "max-jobs = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
-              echo "cores = $RUNPOD_CPU_COUNT" >> /etc/nix/nix.conf
-          fi
-
-          # Mirror Host Drivers into /run/opengl-driver/lib
-          mkdir -p /run/opengl-driver/lib
-          for f in /usr/lib/x86_64-linux-gnu/*; do
-              ln -sf "$f" "/run/opengl-driver/lib/$(basename "$f")"
-          done
-
-          echo "Patching /usr/bin ELFs..."
-          loader="${pkgs-linux.glibc}/lib/ld-linux-x86-64.so.2"
-          rpath="/usr/lib/x86_64-linux-gnu:/usr/lib64:/run/opengl-driver/lib"
-          for bin in /usr/bin/*; do
-              [[ -f "$bin" && -x "$bin" ]] || continue
-              if ${pkgs-linux.patchelf}/bin/patchelf --print-interpreter "$bin" >/dev/null 2>&1; then
-                  if ! ${pkgs-linux.patchelf}/bin/patchelf --set-interpreter "$loader" --set-rpath "$rpath" "$bin" 2>/dev/null; then
-                      patched="/run/patched-bin/$(basename "$bin")"
-                      if cp "$bin" "$patched" 2>/dev/null; then
-                          chmod 0755 "$patched" || true
-                          ${pkgs-linux.patchelf}/bin/patchelf --set-interpreter "$loader" --set-rpath "$rpath" "$patched" 2>/dev/null || true
-                      fi
-                  fi
-              fi
-          done
-
-          echo "Start script(s) finished, Pod is ready to use."
-
-          exec sleep infinity
-        '';
+      mkImage = import ./lib/mk-image.nix {
+        pkgs = pkgs-linux;
+        lib = pkgs-linux.lib;
+        inherit nixpkgs;
       };
 
-      baseEnv = pkgs-linux.buildEnv {
-        name = "runpod-base-env";
-        paths = with pkgs-linux; [
-          bashInteractive
-          coreutils
-          openssh
-          gnugrep
-          gawk
-          procps
-          curl
-          jq
-          nix
-          cacert
-          glibcLocales
-          git
-          tini
-
-          # Needed to enable the web terminal switch
-          gotty
-          gnused
-        ] ++ [
-          startScript
-          registryFile
-          profileFile
-        ];
-      };
-
-      image = pkgs-linux.dockerTools.buildLayeredImage {
+      fullImage = mkImage {
         name = "ghcr.io/0xcaff/runpod-nix";
         tag = "latest";
-
-        contents = baseEnv;
-
-        config = {
-          # Use tini as an init process to prevent zombie processes.
-          # -s: Register as a subreaper (RunPod's docker-init steals PID 1).
-          # -g: Forward signals to the entire process group (kills background workers).
-          Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "-s" "-g" "--" ];
-          Cmd = [ "${startScript}/bin/start.sh" ];
-          Env = [
-            "USER=root"
-            "HOME=/root"
-            "PATH=/run/patched-bin:/usr/bin:/sbin:/bin"
-            "NIX_PAGER=cat"
-            "LANG=en_US.UTF-8"
-            "LC_ALL=en_US.UTF-8"
-            "LOCALE_ARCHIVE=${pkgs-linux.glibcLocales}/lib/locale/locale-archive"
-            "SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
-            "NIX_SSL_CERT_FILE=${pkgs-linux.cacert}/etc/ssl/certs/ca-bundle.crt"
-          ];
-          ExposedPorts = { "22/tcp" = {}; };
-        };
-
-        extraCommands = ''
-          mkdir -p root etc/ssh var/empty var/run/sshd usr/sbin bin tmp
-          chmod 755 var/empty var/run/sshd
-          chmod 1777 tmp
-
-          # Protect base image contents from Nix Garbage Collection
-          mkdir -p nix/var/nix/gcroots
-          ln -s ${baseEnv} nix/var/nix/gcroots/base-env
-
-          # Replace read-only /etc/nix from buildEnv with a writable directory.
-          rm -rf etc/nix
-          mkdir -p etc/nix
-          cp ${registryFile}/etc/nix/registry.json etc/nix/registry.json
-
-          # Create a writable nix.conf based on the Nix-managed one.
-          cat ${nixConfEncoded}/etc/nix/nix.conf > etc/nix/nix.conf
-
-          echo "hosts: files dns" > etc/nsswitch.conf
-          
-          echo "root:x:0:0:root:/root:/bin/bash" > etc/passwd
-          echo "sshd:x:100:65534:Privilege-separated SSH:/var/empty:/sbin/nologin" >> etc/passwd
-          echo "root:x:0:" > etc/group
-          echo "sshd:x:100:" >> etc/group
-        '';
+        modules = [
+          ./modules/base/default.nix
+          ./modules/tools.nix
+          ./modules/ssh.nix
+          ./modules/nix-runtime.nix
+          ./modules/gotty.nix
+        ];
       };
 
+      minimalImage = mkImage {
+        name = "ghcr.io/0xcaff/runpod-nix";
+        tag = "minimal";
+        modules = [ ./modules/base/default.nix ];
+      };
     in {
+      lib = {
+        inherit mkImage modulePaths;
+      };
+
       packages = forAllSystems (system: {
-        default = image;
+        default = fullImage;
+        full = fullImage;
+        minimal = minimalImage;
       });
 
-      apps = forAllSystems (system: 
-        let 
+      apps = forAllSystems (system:
+        let
           pkgs = import nixpkgs { inherit system; };
         in {
           deploy = {
@@ -247,7 +70,7 @@
             program = "${pkgs.writeShellScript "deploy" ''
               set -e
               echo "Pushing image to ghcr.io/0xcaff/runpod-nix:latest..."
-              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${image} docker://ghcr.io/0xcaff/runpod-nix:latest
+              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${fullImage} docker://ghcr.io/0xcaff/runpod-nix:latest
             ''}";
           };
         }

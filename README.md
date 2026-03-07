@@ -5,12 +5,27 @@ A minimal, high-performance RunPod base image built entirely with Nix Flakes. Th
 ## Core Features
 
 - **Lean & Fast:** Built using `dockerTools.buildLayeredImage` for minimal overhead and fast startup.
+- **Composable Modules:** Features are split into reusable modules and composed with `lib.evalModules`.
 - **Persistent Nix Environment:** Automatically persists your Nix user profile (`nix profile install`) in `/workspace/nix-profiles`, so your tools survive Pod restarts.
 - **Dynamic Resource Optimization:** Automatically configures Nix `max-jobs` and `cores` based on your Pod's `RUNPOD_CPU_COUNT`.
 - **Automatic SSH Setup:** Seamlessly installs your `PUBLIC_KEY` and starts `sshd` on boot.
 - **Robust Environment Management:** Consolidates all environment variables (including RunPod UI variables and Nix paths) into `/etc/profile`, ensuring a consistent experience across all shell types (login, interactive, and `nix shell`).
 - **NVIDIA Compatibility:** Pre-configured with the necessary `LD_LIBRARY_PATH` and `/run/opengl-driver` hooks to ensure PyTorch and other CUDA applications can find the host's drivers.
 - **CUDA Cache:** Built-in support for the `cuda-maintainers` Cachix binary cache to speed up GPU-related installations.
+
+## Module Layout
+
+- `modules/base/options.nix`: Module schema (`runpod.contents`, `runpod.env`, `runpod.startHooks`, `runpod.extraCommands`, etc.)
+- `modules/base/default.nix`: Base composition module (imports `base/options`, `base/env`, `base/host-libs`, and `base/patched-bin`)
+- `modules/base/patched-bin.nix`: Patched-bin setup and ELF patching hook for `/usr/bin`
+- `modules/base/env.nix`: RunPod env export and `/etc/profile` integration
+- `modules/base/host-libs.nix`: Host driver library mirror hook
+- `modules/ssh.nix`: SSH setup and `PUBLIC_KEY` handling
+- `modules/nix-runtime.nix`: Nix config, registry, GC root, and persistent profiles
+- `modules/gotty.nix`: Gotty compatibility hook
+- `modules/tools.nix`: Extra CLI tooling (`gnugrep`, `gawk`, `procps`, `curl`, `jq`) used only in full images
+- `lib/mk-image.nix`: Builder function that evaluates modules and emits the OCI image derivation
+- `flake.nix`: Defines inline module compositions for `full` and `minimal` images
 
 ## Usage
 
@@ -38,10 +53,17 @@ To build the image locally:
 nix build .#
 ```
 
+To build the minimal profile:
+```bash
+nix build .#minimal
+```
+
 To push the image to a registry (requires `skopeo`):
 ```bash
 nix run .#deploy
 ```
+
+To create a custom image, call `mkImage` from your own flake and pass a module list.
 
 ## Architecture Notes: The Glibc Unity Rule
 
