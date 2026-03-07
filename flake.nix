@@ -37,13 +37,10 @@
         fi
 
         # Ensure the persistent Nix profile is on the PATH
-        export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+        export PATH="/run/patched-bin:/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
 
         # Globally allow unfree packages (like CUDA)
         export NIXPKGS_ALLOW_UNFREE=1
-
-        # Expose RunPod NVIDIA drivers to Nix packages
-        export LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"
       '';
 
       sshd_config = pkgs-linux.writeText "sshd_config" ''
@@ -64,6 +61,9 @@
         runtimeInputs = with pkgs-linux; [ coreutils gnugrep gawk bash procps ];
         text = ''
           echo "Pod Started"
+
+          mkdir -p /run/patched-bin
+          export PATH="/run/patched-bin:$PATH"
 
           if [[ -n "''${PUBLIC_KEY:-}" ]]; then
               echo "Setting up SSH..."
@@ -108,8 +108,24 @@
               ln -sf "$f" "/run/opengl-driver/lib/$(basename "$f")"
           done
 
+          echo "Patching /usr/bin ELFs..."
+          loader="${pkgs-linux.glibc}/lib/ld-linux-x86-64.so.2"
+          rpath="/usr/lib/x86_64-linux-gnu:/usr/lib64:/run/opengl-driver/lib"
+          for bin in /usr/bin/*; do
+              [[ -f "$bin" && -x "$bin" ]] || continue
+              if ${pkgs-linux.patchelf}/bin/patchelf --print-interpreter "$bin" >/dev/null 2>&1; then
+                  if ! ${pkgs-linux.patchelf}/bin/patchelf --set-interpreter "$loader" --set-rpath "$rpath" "$bin" 2>/dev/null; then
+                      patched="/run/patched-bin/$(basename "$bin")"
+                      if cp "$bin" "$patched" 2>/dev/null; then
+                          chmod 0755 "$patched" || true
+                          ${pkgs-linux.patchelf}/bin/patchelf --set-interpreter "$loader" --set-rpath "$rpath" "$patched" 2>/dev/null || true
+                      fi
+                  fi
+              fi
+          done
+
           echo "Start script(s) finished, Pod is ready to use."
-          
+
           exec sleep infinity
         '';
       };
@@ -144,7 +160,7 @@
       image = pkgs-linux.dockerTools.buildLayeredImage {
         name = "ghcr.io/0xcaff/runpod-nix";
         tag = "latest";
-        
+
         contents = baseEnv;
 
         config = {
@@ -152,11 +168,11 @@
           # -s: Register as a subreaper (RunPod's docker-init steals PID 1).
           # -g: Forward signals to the entire process group (kills background workers).
           Entrypoint = [ "${pkgs-linux.tini}/bin/tini" "-s" "-g" "--" ];
-          Cmd = [ "${startScript}/bin/start.sh" ]; 
+          Cmd = [ "${startScript}/bin/start.sh" ];
           Env = [
             "USER=root"
             "HOME=/root"
-            "PATH=/usr/bin:/sbin:/bin"
+            "PATH=/run/patched-bin:/usr/bin:/sbin:/bin"
             "RP_WORKSPACE=/workspace"
             "NIX_PAGER=cat"
             "LANG=en_US.UTF-8"
