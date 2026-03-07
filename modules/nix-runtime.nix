@@ -33,7 +33,7 @@ let
           if builtins.isList v then lib.concatStringsSep " " v
           else if builtins.isBool v then (if v then "true" else "false")
           else builtins.toString v;
-      } "=";
+      } " = ";
     } nixConf
   );
 
