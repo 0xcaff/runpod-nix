@@ -19,7 +19,7 @@ these are tools for packaging your nix applications into runpod images.
 
 to launch a development image it on runpod (with ssh access, nix etc):
 
-- create a pod or pod template with image `ghcr.io/0xcaff/runpod-nix-interactive`
+- create a pod or pod template with image `ghcr.io/0xcaff/runpod-nix:interactive`
 - expose TCP port `22` if you want direct SSH access
 - add a volume if you want the `/workspace` folder and `nix profile add` installs to persist across reboots
 - once the pod is running, open the web terminal from the connect menu or use

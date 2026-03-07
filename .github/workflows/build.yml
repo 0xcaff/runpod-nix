@@ -1,0 +1,63 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-interactive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+
+      - name: Docker Meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/0xcaff/runpod-nix
+          tags: |
+            type=raw,value=interactive
+            type=sha,format=short,prefix=sha-
+            type=edge,branch=main
+
+      - name: Build interactive image
+        id: build
+        run: |
+          out_path="$(nix build .#packages.x86_64-linux.interactive --no-link --print-out-paths)"
+          echo "archive=${out_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load Nix image archive
+        run: |
+          docker load -i "${{ steps.build.outputs.archive }}"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: .
+          file: .github/docker/republish.Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BASE_IMAGE=ghcr.io/0xcaff/runpod-nix:interactive
