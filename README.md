@@ -15,7 +15,33 @@ these are tools for packaging your nix applications into runpod images.
 
 ## usage
 
-### building an image for your app
+### development
+
+to launch a development image it on runpod (with ssh access, nix etc):
+
+- create a pod or pod template with image `ghcr.io/0xcaff/runpod-nix-interactive`
+- expose TCP port `22` if you want direct SSH access
+- add a volume if you want the `/workspace` folder and `nix profile add` installs to persist across reboots
+- once the pod is running, open the web terminal from the connect menu or use
+  the SSH command shown there
+
+see runpod docs for [SSH access](https://docs.runpod.io/pods/configuration/use-ssh),
+[connection options](https://docs.runpod.io/pods/connect-to-a-pod), and
+[pod environment variables](https://docs.runpod.io/pods/templates/environment-variables).
+
+it includes `nix`, `git`, basic shell tooling, ssh support, `nvidia-smi` and friends, and gotty support
+for the runpod web terminal.
+
+typical workflow:
+
+```bash
+nix profile add nixpkgs#python311 nixpkgs#tmux nixpkgs#uv
+git clone https://github.com/your-org/your-repo
+cd your-repo
+nix develop
+```
+
+### depolyment
 
 ```nix
 {
@@ -79,37 +105,5 @@ to launch it on runpod:
 
 see runpod docs for [custom templates](https://docs.runpod.io/pods/templates/create-custom-template)
 and [exposing ports](https://docs.runpod.io/pods/configuration/expose-ports).
-
-### using the interactive image for development
-
-if you just want a shell on a gpu machine, start from
-`ghcr.io/0xcaff/runpod-nix:interactive`.
-
-to launch it on runpod:
-
-- create a pod or pod template with image `ghcr.io/0xcaff/runpod-nix-interactive`
-- expose TCP port `22` if you want direct SSH access
-- add a volume you want the `/workspace` folder and `nix profile add` installs to persist across reboots
-- once the pod is running, open the web terminal from the connect menu or use
-  the SSH command shown there
-
-see runpod docs for [SSH access](https://docs.runpod.io/pods/configuration/use-ssh),
-[connection options](https://docs.runpod.io/pods/connect-to-a-pod), and
-[pod environment variables](https://docs.runpod.io/pods/templates/environment-variables).
-
-it includes `nix`, `git`, basic shell tooling, ssh support, `nvidia-smi` and friends, and gotty support
-for the runpod web terminal.
-
-typical workflow:
-
-```bash
-nix profile add nixpkgs#python311 nixpkgs#tmux nixpkgs#uv
-git clone https://github.com/your-org/your-repo
-cd your-repo
-nix develop
-```
-
-profile installs go into `$RP_WORKSPACE/nix-profiles` when `RP_WORKSPACE` is
-set. otherwise they fall back to `/root/nix-profiles`.
 
 [runpod]: https://runpod.io/
