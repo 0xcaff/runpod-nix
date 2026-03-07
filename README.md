@@ -11,7 +11,6 @@
 
 tools for building images for [runpod] with nix
 
-> ghcr.io/0xcaff/runpod-nix:latest
 
 ## usage
 
@@ -20,6 +19,10 @@ tools for building images for [runpod] with nix
 - launch from one of the templates
   - [Runpod Launch Instance - Nix - Nvidia GPU](https://console.runpod.io/deploy?template=d5w42uggft&ref=zchz96mv)
   - [Runpod Launch Instance - Nix - CPU](https://console.runpod.io/deploy?template=cuyqr7ggld&ref=zchz96mv)
+  - or directly from the image
+    ```
+    ghcr.io/0xcaff/runpod-nix:latest
+    ```
 - add volume storage if you want `/workspace` and nix profile to persist across reboots
 
 includes `nix`, `git`, basic shell tooling, `nvidia-smi` and friends, and gotty support
