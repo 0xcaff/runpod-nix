@@ -11,6 +11,16 @@
 
 tools for building images for [runpod] with nix
 
+## motivation
+
+nix is a tool for defining the entire software environment for a workload in
+one place. from the application to the runtime level dependencies (python
+packages or node packages) to native libraries to helper binaries (like ffmpeg
+or protoc). where tools like docker trade off composibility for isolation and tools like uv miss parts of the build graph, nix encodes the whole thing.
+
+runpod has built a great platform for renting GPUs. its cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
+
+these are tools for packaging your nix applications into runpod images.
 
 ## usage
 
@@ -115,16 +125,5 @@ to launch it on runpod:
 
 see runpod docs for [custom templates](https://docs.runpod.io/pods/templates/create-custom-template)
 and [exposing ports](https://docs.runpod.io/pods/configuration/expose-ports).
-
-## motivation
-
-nix is a tool for defining the entire software environment for a workload in
-one place. from the application to the runtime level dependencies (python
-packages or node packages) to native libraries to helper binaries (like ffmpeg
-or protoc). where tools like docker trade off composibility for isolation and tools like uv miss parts of the build graph, nix encodes the whole thing.
-
-runpod has built a great platform for renting GPUs. its cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
-
-these are tools for packaging your nix applications into runpod images.
 
 [runpod]: https://runpod.io/
