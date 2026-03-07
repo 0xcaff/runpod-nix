@@ -132,7 +132,7 @@
 
           # Needed to enable the web terminal switch
           gotty
-          sed
+          gnused
         ] ++ [
           startScript
           registryFile
