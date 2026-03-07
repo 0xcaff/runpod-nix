@@ -34,6 +34,21 @@
           pkgs = import nixpkgs { inherit system; };
           mkImage = import ./lib/mk-image.nix { inherit pkgs; };
         in {
+          # Minimal Runpod runtime image. Use this for serving. Weights ~71MB
+          # compressed (~282 MB uncompressed).
+          base = mkImage {
+            name = "ghcr.io/0xcaff/runpod-nix";
+            tag = "base";
+            modules = [ ./modules/base/default.nix ];
+          };
+
+          # Full interactive Runpod image. Use this for development and
+          # interactive debugging. Weighs ~300MB compressed (~1GB
+          # uncompressed).
+          #
+          # * full nix cli available
+          # * ssh access via dedicated port
+          # * GoTTY support for Runpod Web Terminal
           interactive = mkImage {
             name = "ghcr.io/0xcaff/runpod-nix";
             tag = "interactive";
@@ -44,12 +59,6 @@
               ./modules/nix-runtime.nix
               ./modules/gotty.nix
             ];
-          };
-
-          base = mkImage {
-            name = "ghcr.io/0xcaff/runpod-nix";
-            tag = "base";
-            modules = [ ./modules/base/default.nix ];
           };
         };
 
