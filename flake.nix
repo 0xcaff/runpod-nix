@@ -7,10 +7,11 @@
 
   outputs = { self, nixpkgs }:
     let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-
-      pkgs = import nixpkgs { system = "x86_64-linux"; };
+      targetSystems = [ "x86_64-linux" ];
+      deploymentSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forTargetSystems = nixpkgs.lib.genAttrs targetSystems;
+      forDeploymentSystems = nixpkgs.lib.genAttrs deploymentSystems;
+      defaultTargetSystem = builtins.head targetSystems;
 
       modulePaths = {
         base = ./modules/base/default.nix;
@@ -27,39 +28,48 @@
         base-host-libs = ./modules/base/host-libs.nix;
       };
 
-      mkImage = import ./lib/mk-image.nix {
-        inherit pkgs;
-      };
+      mkImagesForSystem = system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          mkImage = import ./lib/mk-image.nix { inherit pkgs; };
+        in {
+          full = mkImage {
+            name = "ghcr.io/0xcaff/runpod-nix";
+            tag = "latest";
+            modules = [
+              ./modules/base/default.nix
+              ./modules/tools.nix
+              ./modules/ssh.nix
+              ./modules/nix-runtime.nix
+              ./modules/gotty.nix
+            ];
+          };
 
-      fullImage = mkImage {
-        name = "ghcr.io/0xcaff/runpod-nix";
-        tag = "latest";
-        modules = [
-          ./modules/base/default.nix
-          ./modules/tools.nix
-          ./modules/ssh.nix
-          ./modules/nix-runtime.nix
-          ./modules/gotty.nix
-        ];
-      };
+          minimal = mkImage {
+            name = "ghcr.io/0xcaff/runpod-nix";
+            tag = "minimal";
+            modules = [ ./modules/base/default.nix ];
+          };
+        };
 
-      minimalImage = mkImage {
-        name = "ghcr.io/0xcaff/runpod-nix";
-        tag = "minimal";
-        modules = [ ./modules/base/default.nix ];
-      };
-    in {
+      images = forTargetSystems mkImagesForSystem;
+      defaultImages = images.${defaultTargetSystem};
+    in
+    {
       lib = {
-        inherit mkImage modulePaths;
+        inherit modulePaths;
+        mkImage = import ./lib/mk-image.nix;
       };
 
-      packages = forAllSystems (system: {
-        default = fullImage;
-        full = fullImage;
-        minimal = minimalImage;
+      inherit images;
+
+      packages = forTargetSystems (system: {
+        default = images.${system}.full;
+        full = images.${system}.full;
+        minimal = images.${system}.minimal;
       });
 
-      apps = forAllSystems (system:
+      apps = forDeploymentSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
         in {
@@ -68,7 +78,7 @@
             program = "${pkgs.writeShellScript "deploy" ''
               set -e
               echo "Pushing image to ghcr.io/0xcaff/runpod-nix:latest..."
-              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${fullImage} docker://ghcr.io/0xcaff/runpod-nix:latest
+              ${pkgs.skopeo}/bin/skopeo copy --insecure-policy docker-archive:${defaultImages.full} docker://ghcr.io/0xcaff/runpod-nix:latest
             ''}";
           };
         }
