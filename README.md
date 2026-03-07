@@ -1,6 +1,6 @@
 # runpod-nix
 
-tools for building images for runpod with nix
+tools for building images for [runpod] with nix
 
 ## motivation
 
@@ -111,3 +111,5 @@ nix develop
 
 profile installs go into `$RP_WORKSPACE/nix-profiles` when `RP_WORKSPACE` is
 set. otherwise they fall back to `/root/nix-profiles`.
+
+[runpod]: https://runpod.io/
