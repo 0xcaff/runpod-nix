@@ -10,7 +10,9 @@
 { lib, pkgs, runpodImageEnv, ... }:
 let
   nixProfileEnv = pkgs.writeTextDir "etc/profile.d/nix-runtime.sh" ''
-    export PATH="/workspace/nix-profiles/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+    runpod_nix_profile_root="''${RP_WORKSPACE:-/root}"
+    runpod_nix_profile_dir="$runpod_nix_profile_root/nix-profiles"
+    export PATH="$runpod_nix_profile_dir/profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
     export NIXPKGS_ALLOW_UNFREE=1
   '';
 
@@ -70,10 +72,12 @@ in {
 
     startHooks = [
       ''
-        mkdir -p /workspace/nix-profiles
+        runpod_nix_profile_root="''${RP_WORKSPACE:-/root}"
+        runpod_nix_profile_dir="$runpod_nix_profile_root/nix-profiles"
+        mkdir -p "$runpod_nix_profile_dir"
         mkdir -p /nix/var/nix/profiles/per-user
-        rm -f /nix/var/nix/profiles/per-user/root
-        ln -s /workspace/nix-profiles /nix/var/nix/profiles/per-user/root
+        rm -rf /nix/var/nix/profiles/per-user/root
+        ln -s "$runpod_nix_profile_dir" /nix/var/nix/profiles/per-user/root
       ''
       ''
         if [[ -n "''${RUNPOD_CPU_COUNT:-}" ]]; then
