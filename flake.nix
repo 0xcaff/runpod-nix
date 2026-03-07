@@ -170,7 +170,7 @@
         };
 
         extraCommands = ''
-          mkdir -p root etc/ssh etc/nix var/empty var/run/sshd usr/sbin bin tmp
+          mkdir -p root etc/ssh var/empty var/run/sshd usr/sbin bin tmp
           chmod 755 var/empty var/run/sshd
           chmod 1777 tmp
 
@@ -178,7 +178,12 @@
           mkdir -p nix/var/nix/gcroots
           ln -s ${baseEnv} nix/var/nix/gcroots/base-env
 
-          # Create a writable nix.conf based on the Nix-managed one
+          # Replace read-only /etc/nix from buildEnv with a writable directory.
+          rm -rf etc/nix
+          mkdir -p etc/nix
+          cp ${registryFile}/etc/nix/registry.json etc/nix/registry.json
+
+          # Create a writable nix.conf based on the Nix-managed one.
           cat ${nixConf}/etc/nix/nix.conf > etc/nix/nix.conf
 
           echo "hosts: files dns" > etc/nsswitch.conf
