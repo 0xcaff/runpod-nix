@@ -25,7 +25,7 @@ tools for building images for [runpod] with nix
     ```
 - add volume storage if you want `/workspace` and nix profile to persist across reboots
 
-the development image (`ghcr.io/0xcaff/runpod-nix:latest`) includes:
+the development image includes:
 
 - full `nix` cli with `flakes` and `nix-command` enabled
 - pinned `nixpkgs` registry and preconfigured binary caches (including CUDA cache)
