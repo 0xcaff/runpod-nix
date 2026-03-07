@@ -9,7 +9,7 @@ one place. from the application to the runtime level dependencies (python
 packages or node packages) to native libraries to helper binaries (like ffmpeg
 or protoc). where tools like docker trade off composibility for isolation and tools like uv miss parts of the build graph, nix encodes the whole thing.
 
-runpod has built a great platform for renting GPUs. its very cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
+runpod has built a great platform for renting GPUs. its cheap, containers start up fast. there are APIs. the web interface make sense and things just work.
 
 these are tools for packaging your nix applications into runpod images.
 
