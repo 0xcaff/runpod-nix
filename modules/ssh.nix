@@ -1,3 +1,6 @@
+# Configures dedicated SSH access to the container, including SCP and SFTP.
+# For other access methods, see ./gotty.nix for GoTTY web terminals and the
+# Runpod tunnel for TTY-only SSH (see [Basic SSH](https://docs.runpod.io/pods/configuration/use-ssh#basic-ssh-with-key-authentication)).
 { pkgs, ... }:
 let
   sshdConfig = pkgs.writeText "sshd_config" ''

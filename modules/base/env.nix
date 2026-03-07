@@ -1,3 +1,5 @@
+# SSHD filters part of the environment inherited by the container. This ensures
+# shells and subshells retain the variables injected at container launch.
 { pkgs, ... }:
 let
   profileFile = pkgs.writeTextDir "etc/profile" ''

@@ -1,3 +1,12 @@
+# Configures the container for interactive Nix usage.
+#
+# This includes:
+# - Nix tooling and PATH setup
+# - substituters for the standard and CUDA caches
+# - nix-command and flakes enabled in nix.conf
+# - GC roots to preserve image dependencies
+# - max-jobs and cores derived from the container CPU count
+# - a pinned nixpkgs registry entry matching this project
 { lib, pkgs, runpodImageEnv, ... }:
 let
   nixProfileEnv = pkgs.writeTextDir "etc/profile.d/nix-runtime.sh" ''

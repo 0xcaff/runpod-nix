@@ -1,3 +1,6 @@
+# Runpod injects several binaries into /usr/bin, such as nvidia-smi and
+# runpodctl. This adjusts their ELF interpreter and library search paths so
+# they can run correctly inside the container.
 { lib, pkgs, ... }:
 let
   baseProfileEnv = pkgs.writeTextDir "etc/profile.d/base-runtime.sh" ''
@@ -6,7 +9,6 @@ let
 in {
   config.runpod = {
     contents = [
-      pkgs.patchelf
       baseProfileEnv
     ];
 
