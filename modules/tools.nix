@@ -5,7 +5,6 @@
     gnugrep
     gawk
     findutils
-    which
     procps
     curl
     jq

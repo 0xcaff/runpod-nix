@@ -16,6 +16,7 @@ in
     contents = with pkgs; [
       bashInteractive
       coreutils
+      which
       cacert
       glibcLocales
       tini
