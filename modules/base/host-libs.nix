@@ -5,6 +5,9 @@
 { ... }:
 {
   config.runpod.startHooks = [ ''
+    # Xorg config fragments from the host are not used in this container.
+    rm -rf /usr/share/X11/xorg.conf.d
+
     mkdir -p /run/opengl-driver/lib
     if [ -d /usr/lib/x86_64-linux-gnu ]; then
       for f in /usr/lib/x86_64-linux-gnu/*; do
