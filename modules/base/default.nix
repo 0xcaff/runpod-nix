@@ -1,4 +1,10 @@
 { pkgs, ... }:
+let
+  usrBinEnv = pkgs.runCommand "usr-bin-env" {} ''
+    mkdir -p "$out/usr/bin"
+    ln -s ${pkgs.coreutils}/bin/env "$out/usr/bin/env"
+  '';
+in
 {
   imports = [
     ./options.nix
@@ -13,6 +19,7 @@
       cacert
       glibcLocales
       tini
+      usrBinEnv
     ];
 
     env = {
@@ -30,7 +37,6 @@
       ''
         mkdir -p root etc tmp bin usr/sbin
         chmod 1777 tmp
-        ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env
       ''
       ''
         echo "hosts: files dns" > etc/nsswitch.conf
