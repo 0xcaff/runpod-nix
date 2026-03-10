@@ -30,6 +30,7 @@
       ''
         mkdir -p root etc tmp bin usr/sbin
         chmod 1777 tmp
+        ln -sf ${pkgs.coreutils}/bin/env /usr/bin/env
       ''
       ''
         echo "hosts: files dns" > etc/nsswitch.conf
