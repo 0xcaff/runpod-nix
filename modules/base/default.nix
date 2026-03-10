@@ -1,7 +1,7 @@
 { pkgs, ... }:
 let
   usrBinEnv = pkgs.runCommand "usr-bin-env" {} ''
-    mkdir -p "$out/usr/bin" "$out/usr/sbin"
+    mkdir -p "$out/usr/bin"
     ln -s ${pkgs.coreutils}/bin/env "$out/usr/bin/env"
   '';
 in
