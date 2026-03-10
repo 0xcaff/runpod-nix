@@ -1,7 +1,7 @@
 { pkgs, ... }:
 let
   usrBinEnv = pkgs.runCommand "usr-bin-env" {} ''
-    mkdir -p "$out/usr/bin"
+    mkdir -p "$out/usr/bin" "$out/usr/sbin"
     ln -s ${pkgs.coreutils}/bin/env "$out/usr/bin/env"
   '';
 in
@@ -35,7 +35,7 @@ in
 
     extraCommands = [
       ''
-        mkdir -p root etc tmp bin usr/sbin
+        mkdir -p root etc tmp bin
         chmod 1777 tmp
       ''
       ''
