@@ -9,7 +9,7 @@ in
   imports = [
     ./options.nix
     ./host-libs.nix
-    ./patched-bin.nix
+    # ./patched-bin.nix
   ];
 
   config.runpod = {
