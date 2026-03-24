@@ -7,8 +7,30 @@
 # - GC roots to preserve image dependencies
 # - max-jobs and cores derived from the container CPU count
 # - a pinned nixpkgs registry entry matching this project
-{ lib, pkgs, runpodImageEnv, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  runpodImageEnv,
+  ...
+}:
 let
+  cfg = config.runpod.nixRuntime;
+
+  # Mirrors the NixOS nix.settings semantic type shape.
+  nixConfAtomType =
+    with lib.types;
+    oneOf [
+      bool
+      int
+      float
+      str
+      path
+      package
+    ];
+
+  nixConfType = with lib.types; attrsOf (either nixConfAtomType (listOf nixConfAtomType));
+
   nixProfileEnv = pkgs.writeTextDir "etc/profile.d/nix-runtime.sh" ''
     runpod_nix_profile_root="''${RP_WORKSPACE:-/root}"
     runpod_nix_profile_dir="$runpod_nix_profile_root/nix-profiles"
@@ -16,36 +38,15 @@ let
     export NIXPKGS_ALLOW_UNFREE=1
   '';
 
-  nixConf = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-
-    sandbox = false;
-
-    build-users-group = "";
-
-    substituters = [
-      "https://cache.nixos.org"
-      "https://cache.nixos-cuda.org"
-    ];
-
-    trusted-public-keys = [
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
-    ];
-  };
-
   nixConfEncoded = pkgs.writeTextDir "etc/nix/nix.conf" (
     lib.generators.toKeyValue {
       mkKeyValue = lib.generators.mkKeyValueDefault {
         mkValueString = v:
-          if builtins.isList v then lib.concatStringsSep " " v
+          if builtins.isList v then lib.concatStringsSep " " (map builtins.toString v)
           else if builtins.isBool v then (if v then "true" else "false")
           else builtins.toString v;
       } " = ";
-    } nixConf
+    } cfg.settings
   );
 
   registryFile = pkgs.writeText "registry.json" (builtins.toJSON {
@@ -57,7 +58,59 @@ let
       }
     ];
   });
-in {
+in
+{
+  options.runpod.nixRuntime.settings = lib.mkOption {
+    type = lib.types.submodule {
+      freeformType = nixConfType;
+
+      options = {
+        experimental-features = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [
+            "nix-command"
+            "flakes"
+          ];
+          description = "Nix experimental features to enable.";
+        };
+
+        sandbox = lib.mkOption {
+          type = lib.types.either lib.types.bool (lib.types.enum [ "relaxed" ]);
+          default = false;
+          description = "Whether builds run in a sandbox.";
+        };
+
+        build-users-group = lib.mkOption {
+          type = lib.types.str;
+          default = "";
+          description = "Nix build users group setting.";
+        };
+
+        substituters = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [
+            "https://cache.nixos.org"
+            "https://cache.nixos-cuda.org"
+          ];
+          description = "Binary caches used by Nix.";
+        };
+
+        trusted-public-keys = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          default = [
+            "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+            "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
+          ];
+          description = "Public keys for trusted binary caches.";
+        };
+      };
+    };
+    default = { };
+    description = ''
+      Nix settings translated directly into `/etc/nix/nix.conf`.
+    '';
+  };
+
   config.runpod = {
     contents = [
       pkgs.nix
